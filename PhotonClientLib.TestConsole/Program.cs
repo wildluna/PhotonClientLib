@@ -16,9 +16,9 @@ namespace PhotonLib.TestConsole
 
         static async void Start()
         {
-            int loopCount = 1000;
-            int taskCount = 5;
-            int msgCount = 100;
+            int loopCount = 1;
+            int taskCount = 1;
+            int msgCount = 1;
 
             for (int k = 0; k < loopCount; k++)
             {

@@ -27,9 +27,7 @@ namespace PhotonLib
         private CancellationTokenSource requestCancelToken;
 
         private ManualResetEvent requestAwaitor = new ManualResetEvent(true);
-        private BlockingCollection<RequestPackage> requestQueue = new BlockingCollection<RequestPackage>();
-        private ReaderWriterLockSlim requestLock = new ReaderWriterLockSlim();
-
+        private BlockingCollection<RequestPackage> requestQueue;
         private RequestPackage currentRequest = null;
 
         private ManualResetEvent connectAwaitor = new ManualResetEvent(false);
@@ -124,6 +122,8 @@ namespace PhotonLib
 
         private void StartService()
         {
+            requestQueue = new BlockingCollection<RequestPackage>();
+
             serviceCancelToken = new CancellationTokenSource();
             serviceTask = Task.Factory.StartNew(() => 
             {
@@ -176,31 +176,25 @@ namespace PhotonLib
         private void StopService()
         {
             serviceCancelToken.Cancel();
-
-            serviceTask.Wait();
-            serviceTask.Dispose();
             serviceCancelToken.Dispose();
+            serviceCancelToken = null;
 
             requestCancelToken.Cancel();
-            requestTask.Wait();
-            requestTask.Dispose();
             requestCancelToken.Dispose();
+            requestCancelToken = null;
 
             while (requestQueue.Any())
             {
                 RequestPackage request;
                 requestQueue.TryTake(out request);
 
-                request.Awaitor.Dispose();
-                request.Task.Wait();
-                request.Task.Dispose();
+                request.Dispose();
             }
 
-            if (currentRequest != null)
+            if(currentRequest != null)
             {
-                currentRequest.Awaitor.Dispose();
-                requestTask.Wait();
-                requestTask.Dispose();
+                currentRequest?.Dispose();
+                currentRequest = null;
             }
         }
 
@@ -224,89 +218,35 @@ namespace PhotonLib
                 if (disposing)
                 {
                     // TODO: 處置 Managed 狀態 (Managed 物件)。
-                    if(!serviceCancelToken.IsCancellationRequested)
+                    serviceCancelToken?.Dispose();
+                    requestCancelToken?.Dispose();
+
+                    while (requestQueue.Any())
                     {
-                        serviceCancelToken.Cancel();
-                        try
-                        { 
-                            serviceTask.Wait(3000);
-                        }
-                        catch (OperationCanceledException)
-                        {
+                        RequestPackage request;
+                        requestQueue.TryTake(out request);
 
-                        }
-                        catch (ObjectDisposedException)
-                        {
-
-                        }
-                        finally
-                        {
-                            serviceTask.Dispose();
-                            serviceCancelToken.Dispose();
-                        }
+                        request.Dispose();
                     }
-                    
-                    if(!requestCancelToken.IsCancellationRequested)
+
+                    if(currentRequest != null)
                     {
-                        requestCancelToken.Cancel();
-                        try
-                        {
-                            requestTask.Wait(3000);
-                        }
-                        catch (OperationCanceledException)
-                        {
-
-                        }
-                        catch (ObjectDisposedException)
-                        {
-
-                        }
-                        finally
-                        {
-                            requestTask.Dispose();
-                            requestCancelToken.Dispose();
-                        }
+                        currentRequest.Dispose();
+                        currentRequest = null;
                     }
 
                     requestAwaitor.Dispose();
+                    requestAwaitor = null;
+
                     requestQueue.Dispose();
-                    requestLock.Dispose();
-
-                    try
-                    {
-                        while (requestQueue.Any())
-                        {
-                            RequestPackage request;
-                            requestQueue.TryTake(out request);
-
-                            request.Awaitor.Dispose();
-                            request.Task.Wait(3000);
-                            request.Task.Dispose();
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-
-                    }
-                    catch (ObjectDisposedException)
-                    {
-
-                    }
-
-                    if (currentRequest != null)
-                    {
-                        currentRequest.Awaitor.Dispose();
-                        requestTask.Wait(3000);
-                        requestTask.Dispose();
-                    }
+                    requestQueue = null;
 
                     connectAwaitor.Dispose();
+                    connectAwaitor = null;
                 }
 
                 // TODO: 釋放 Unmanaged 資源 (Unmanaged 物件) 並覆寫下方的完成項。
                 // TODO: 將大型欄位設為 null。
-                currentRequest = null;
-
                 disposedValue = true;
             }
         }
