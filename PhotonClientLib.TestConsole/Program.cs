@@ -44,7 +44,7 @@ namespace PhotonLib.TestConsole
                 }
                 Task.WaitAll(works);
                 Console.WriteLine("All Work Done. Loop: {0}", k);
-                PhotonUtil.Instance.GetClient("Test").Close();
+                PhotonUtil.Instance.RemoveClient("Test");
             } 
         }
     }

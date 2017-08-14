@@ -231,6 +231,14 @@ namespace PhotonLib
                         { 
                             serviceTask.Wait(3000);
                         }
+                        catch (OperationCanceledException)
+                        {
+
+                        }
+                        catch (ObjectDisposedException)
+                        {
+
+                        }
                         finally
                         {
                             serviceTask.Dispose();
@@ -245,6 +253,14 @@ namespace PhotonLib
                         {
                             requestTask.Wait(3000);
                         }
+                        catch (OperationCanceledException)
+                        {
+
+                        }
+                        catch (ObjectDisposedException)
+                        {
+
+                        }
                         finally
                         {
                             requestTask.Dispose();
@@ -256,14 +272,25 @@ namespace PhotonLib
                     requestQueue.Dispose();
                     requestLock.Dispose();
 
-                    while (requestQueue.Any())
+                    try
                     {
-                        RequestPackage request;
-                        requestQueue.TryTake(out request);
+                        while (requestQueue.Any())
+                        {
+                            RequestPackage request;
+                            requestQueue.TryTake(out request);
 
-                        request.Awaitor.Dispose();
-                        request.Task.Wait(3000);
-                        request.Task.Dispose();
+                            request.Awaitor.Dispose();
+                            request.Task.Wait(3000);
+                            request.Task.Dispose();
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+
+                    }
+                    catch (ObjectDisposedException)
+                    {
+
                     }
 
                     if (currentRequest != null)
