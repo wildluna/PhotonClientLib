@@ -54,6 +54,25 @@ namespace TestClientLib
                 rwls.ExitWriteLock();
             }
         }
+        public void RemoveClient(string applicationName)
+        {
+            try
+            {
+                PhotonClient client = null;
+                rwls.EnterWriteLock();
+                if (clients.ContainsKey(applicationName))
+                {
+                    client = clients[applicationName];
+                    client.Close();
+                    client.Dispose();
+                    clients.Remove(applicationName);
+                }
+            }
+            finally
+            {
+                rwls.ExitWriteLock();
+            }
+        }
 
         public async Task<EchoResponse> RequestEchoAsync(string message)
         {

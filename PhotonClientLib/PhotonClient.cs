@@ -14,7 +14,7 @@ namespace PhotonLib
     /// </summary>
     public class PhotonClient : IPhotonPeerListener, IDisposable
     {
-        public TimeSpan ResponseTimeout = new TimeSpan(0, 0, 5);
+        public TimeSpan ResponseTimeout = new TimeSpan(0, 0, 10);
         public PeerStateValue PeerState { get => peer.PeerState; }
 
         public string ServerAddress { get; private set; }
@@ -52,8 +52,9 @@ namespace PhotonLib
         public void Close()
         {
             StopService();
-            peer.Disconnect();  
+            peer.Disconnect();
         }
+
         public Task<OperationResponse> RequestAsync(OperationRequest operationRequest)
         {
 
@@ -94,10 +95,10 @@ namespace PhotonLib
 
         public virtual void OnOperationResponse(OperationResponse operationResponse)
         {
-                if(currentRequest != null)
-                {
-                    currentRequest.OnOprationResponse(operationResponse);
-                }
+            if(currentRequest != null)
+            {
+                currentRequest.OnOprationResponse(operationResponse);
+            }
         }
 
         public virtual void OnStatusChanged(StatusCode statusCode)
@@ -126,18 +127,30 @@ namespace PhotonLib
             serviceCancelToken = new CancellationTokenSource();
             serviceTask = Task.Factory.StartNew(() => 
             {
-                while (!serviceCancelToken.Token.IsCancellationRequested)
+                try
                 {
-                    peer.Service();
+                    while (!serviceCancelToken.IsCancellationRequested)
+                    {
+                        peer.Service();
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+
+                }
+                catch (ObjectDisposedException)
+                {
+
+                }
+
             }, serviceCancelToken.Token);
 
             requestCancelToken = new CancellationTokenSource();
             requestTask = Task.Factory.StartNew(() =>
             {
-                while(!requestCancelToken.Token.IsCancellationRequested)
+                try
                 {
-                    try
+                    while (!requestCancelToken.IsCancellationRequested)
                     {
                         if (requestAwaitor.WaitOne())
                         {
@@ -148,36 +161,46 @@ namespace PhotonLib
                             }
                         }
                     }
-                    catch(OperationCanceledException e)
-                    {
+                }
+                catch (OperationCanceledException)
+                {
 
-                    }
-                };
+                }
+                catch (ObjectDisposedException)
+                {
+
+                }
             });
         }
 
         private void StopService()
         {
             serviceCancelToken.Cancel();
-            try
-            {
-                serviceTask.Wait();
-            }
-            finally
-            {
-                serviceTask.Dispose();
-                serviceCancelToken.Dispose();
-            }
+
+            serviceTask.Wait();
+            serviceTask.Dispose();
+            serviceCancelToken.Dispose();
 
             requestCancelToken.Cancel();
-            try
+            requestTask.Wait();
+            requestTask.Dispose();
+            requestCancelToken.Dispose();
+
+            while (requestQueue.Any())
             {
-                requestTask.Wait();
+                RequestPackage request;
+                requestQueue.TryTake(out request);
+
+                request.Awaitor.Dispose();
+                request.Task.Wait();
+                request.Task.Dispose();
             }
-            finally
+
+            if (currentRequest != null)
             {
+                currentRequest.Awaitor.Dispose();
+                requestTask.Wait();
                 requestTask.Dispose();
-                requestCancelToken.Dispose();
             }
         }
 
@@ -201,11 +224,61 @@ namespace PhotonLib
                 if (disposing)
                 {
                     // TODO: 處置 Managed 狀態 (Managed 物件)。
+                    if(!serviceCancelToken.IsCancellationRequested)
+                    {
+                        serviceCancelToken.Cancel();
+                        try
+                        { 
+                            serviceTask.Wait(3000);
+                        }
+                        finally
+                        {
+                            serviceTask.Dispose();
+                            serviceCancelToken.Dispose();
+                        }
+                    }
                     
+                    if(!requestCancelToken.IsCancellationRequested)
+                    {
+                        requestCancelToken.Cancel();
+                        try
+                        {
+                            requestTask.Wait(3000);
+                        }
+                        finally
+                        {
+                            requestTask.Dispose();
+                            requestCancelToken.Dispose();
+                        }
+                    }
+
+                    requestAwaitor.Dispose();
+                    requestQueue.Dispose();
+                    requestLock.Dispose();
+
+                    while (requestQueue.Any())
+                    {
+                        RequestPackage request;
+                        requestQueue.TryTake(out request);
+
+                        request.Awaitor.Dispose();
+                        request.Task.Wait(3000);
+                        request.Task.Dispose();
+                    }
+
+                    if (currentRequest != null)
+                    {
+                        currentRequest.Awaitor.Dispose();
+                        requestTask.Wait(3000);
+                        requestTask.Dispose();
+                    }
+
+                    connectAwaitor.Dispose();
                 }
 
                 // TODO: 釋放 Unmanaged 資源 (Unmanaged 物件) 並覆寫下方的完成項。
                 // TODO: 將大型欄位設為 null。
+                currentRequest = null;
 
                 disposedValue = true;
             }

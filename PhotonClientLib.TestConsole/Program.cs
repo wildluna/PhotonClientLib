@@ -29,7 +29,7 @@ namespace PhotonLib.TestConsole
 
                 for (int i = 0; i < taskCount; i++)
                 {
-                    int maxDelay = (i % 2) == 0?0:1000;
+                    int maxDelay = (i % 2) == 0?0:0;
                     works[i] = await Task.Factory.StartNew(async (Id) =>
                     {
                         for (int j = 0; j < msgCount; j++)
