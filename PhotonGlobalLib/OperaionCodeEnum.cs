@@ -1,4 +1,4 @@
-﻿namespace PhotonGlobalLib.Operation
+﻿namespace PhotonGlobalLib
 {
     public enum OperaionCodeEnum : byte
     {

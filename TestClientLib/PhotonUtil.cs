@@ -1,4 +1,5 @@
-﻿using PhotonGlobalLib.Operation;
+﻿using PhotonGlobalLib;
+using PhotonGlobalLib.Operation;
 using PhotonLib;
 using System.Collections.Generic;
 using System.Threading;
@@ -33,9 +34,8 @@ namespace TestClientLib
         {
             try
             {
-                PhotonClient client = null;
-
                 rwls.EnterWriteLock();
+                PhotonClient client = null;
                 if (clients.ContainsKey(applicationName))
                 {
                     client = clients[applicationName];
@@ -58,10 +58,10 @@ namespace TestClientLib
         {
             try
             {
-                PhotonClient client = null;
                 rwls.EnterWriteLock();
                 if (clients.ContainsKey(applicationName))
                 {
+                    PhotonClient client = null;
                     client = clients[applicationName];
                     client.Close();
                     client.Dispose();
@@ -79,15 +79,16 @@ namespace TestClientLib
             PhotonClient client = GetClient("Test");
 
             EchoRequest request = new EchoRequest(message);
-            var response = await client.RequestAsync(request);
-            return OperationFactory.GetResponse(response) as EchoResponse;
+            var response = await client.RequestAsync(request.OperationCode, request.Parameters);
+            return OperationFactory.GetResponse(response.OperationCode, response.Parameters, response.ReturnCode, response.DebugMessage) as EchoResponse;
         }
         public async Task<DelayResponse> RequestDelayAsync(int milliSeconds, string message)
         {
             PhotonClient client = GetClient("Test");
+
             DelayRequest request = new DelayRequest(milliSeconds, message);
-            var response = await client.RequestAsync(request);
-            return OperationFactory.GetResponse(response) as DelayResponse;
+            var response = await client.RequestAsync(request.OperationCode, request.Parameters);
+            return OperationFactory.GetResponse(response.OperationCode, response.Parameters, response.ReturnCode, response.DebugMessage) as DelayResponse;
         }
     }
 }

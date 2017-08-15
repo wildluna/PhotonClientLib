@@ -1,12 +1,11 @@
-﻿using ExitGames.Client.Photon;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace PhotonGlobalLib.Operation
 {
-    public class EchoRequest : OperationRequest
+    public class EchoRequest : CustomOperationRequest
     {
         /// <summary>
         /// 訊息
@@ -27,14 +26,12 @@ namespace PhotonGlobalLib.Operation
             };
         }
 
-        public EchoRequest(OperationRequest operationRequest)
-        {
-            OperationCode = operationRequest.OperationCode;
-            Parameters = operationRequest.Parameters;
-        }
+        public EchoRequest(byte operationCode, Dictionary<byte, object> parameters)
+            : base(operationCode, parameters)
+        { }
     }
 
-    public class EchoResponse : OperationResponse
+    public class EchoResponse : CustomOperationResponse
     {
         /// <summary>
         /// 訊息
@@ -53,13 +50,8 @@ namespace PhotonGlobalLib.Operation
                 {0, message },
             };
         }
-
-        public EchoResponse(OperationResponse operationResponse)
-        {
-            OperationCode = operationResponse.OperationCode;
-            ReturnCode = operationResponse.ReturnCode;
-            DebugMessage = operationResponse.DebugMessage;
-            Parameters = operationResponse.Parameters;
-        }
+        public EchoResponse(byte operationCode, Dictionary<byte, object> parameters)
+            : base(operationCode, parameters)
+        { }
     }
 }

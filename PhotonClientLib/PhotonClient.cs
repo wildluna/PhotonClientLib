@@ -53,11 +53,10 @@ namespace PhotonLib
             peer.Disconnect();
         }
 
-        public Task<OperationResponse> RequestAsync(OperationRequest operationRequest)
+        public Task<OperationResponse> RequestAsync(byte operationCode, Dictionary<byte, object> parameters)
         {
-
             var request = new RequestPackage();
-            request.Request = operationRequest;
+            request.Request = new OperationRequest() { OperationCode = operationCode, Parameters = parameters };
             request.Task = Task.Factory.StartNew(() =>
             {
                 try
@@ -135,13 +134,11 @@ namespace PhotonLib
                     }
                 }
                 catch (OperationCanceledException)
-                {
-
-                }
+                { }
                 catch (ObjectDisposedException)
-                {
-
-                }
+                { }
+                catch(NullReferenceException)
+                { }
 
             }, serviceCancelToken.Token);
 
@@ -164,12 +161,12 @@ namespace PhotonLib
                 }
                 catch (OperationCanceledException)
                 {
-
                 }
                 catch (ObjectDisposedException)
                 {
-
                 }
+                catch (ArgumentNullException)
+                { }
             });
         }
 

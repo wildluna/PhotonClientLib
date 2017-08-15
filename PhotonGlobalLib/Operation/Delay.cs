@@ -1,9 +1,8 @@
-﻿using ExitGames.Client.Photon;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace PhotonGlobalLib.Operation
 {
-    public class DelayRequest : OperationRequest
+    public class DelayRequest : CustomOperationRequest
     {
         /// <summary>
         /// 延遲的毫秒數
@@ -28,15 +27,12 @@ namespace PhotonGlobalLib.Operation
                 {1, message },
             };
         }
-
-        public DelayRequest(OperationRequest operationRequest)
-        {
-            OperationCode = operationRequest.OperationCode;
-            Parameters = operationRequest.Parameters;
-        }
+        public DelayRequest(byte operationCode, Dictionary<byte, object> parameters)
+            : base(operationCode, parameters)
+        { }
     }
 
-    public class DelayResponse : OperationResponse
+    public class DelayResponse : CustomOperationResponse
     {
         /// <summary>
         /// 延遲的毫秒數
@@ -61,12 +57,8 @@ namespace PhotonGlobalLib.Operation
             };
         }
 
-        public DelayResponse(OperationResponse operationResponse)
-        {
-            OperationCode = operationResponse.OperationCode;
-            ReturnCode = operationResponse.ReturnCode;
-            DebugMessage = operationResponse.DebugMessage;
-            Parameters = operationResponse.Parameters;
-        }
+        public DelayResponse(byte operationCode, Dictionary<byte, object> parameters)
+            : base(operationCode, parameters)
+        { }
     }
 }
