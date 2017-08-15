@@ -16,8 +16,8 @@ namespace PhotonLib.TestConsole
 
         static async void Start()
         {
-            int loopCount = 1000;
-            int taskCount = 3;
+            int loopCount = 100;
+            int taskCount = 100;
             int msgCount = 100;
 
             for (int k = 0; k < loopCount; k++)
@@ -45,7 +45,8 @@ namespace PhotonLib.TestConsole
                 Task.WaitAll(works);
                 Console.WriteLine("All Work Done. Loop: {0}", k);
                 PhotonUtil.Instance.RemoveClient("Test");
-            } 
+            }
+            Console.WriteLine("Final Done!!");
         }
     }
 }

@@ -21,10 +21,10 @@ namespace PhotonLib
         public string ApplicationName { get; private set; }
 
         private Task serviceTask;
-        private CancellationTokenSource serviceCancelToken;
+        private CancellationTokenSource serviceCancel;
 
         private Task requestTask;
-        private CancellationTokenSource requestCancelToken;
+        private CancellationTokenSource requestCancel;
 
         private ManualResetEvent requestAwaitor = new ManualResetEvent(true);
         private BlockingCollection<RequestPackage> requestQueue;
@@ -32,6 +32,8 @@ namespace PhotonLib
 
         private ManualResetEvent connectAwaitor = new ManualResetEvent(false);
         private PhotonPeer peer;
+
+        private readonly object syncRoot = new object();
 
         public PhotonClient(string applicationName, string serverAddress)
         {
@@ -70,15 +72,13 @@ namespace PhotonLib
                         return request.Response;
                     }
                 }
-                catch (Exception e)
+                /*catch (Exception e)
                 {
                     return new OperationResponse() { ReturnCode = -1, DebugMessage = e.Message };
-                }
+                }*/
                 finally
                 {
-                    currentRequest.Awaitor.Dispose();
-                    currentRequest = null;
-                    requestAwaitor.Set();
+                    request.Awaitor.Dispose();
                 }
             });
             requestQueue.TryAdd(request);
@@ -92,10 +92,7 @@ namespace PhotonLib
 
         public virtual void OnOperationResponse(OperationResponse operationResponse)
         {
-            if(currentRequest != null)
-            {
-                currentRequest.OnOprationResponse(operationResponse);
-            }
+            currentRequest?.OnOprationResponse(operationResponse);
         }
 
         public virtual void OnStatusChanged(StatusCode statusCode)
@@ -123,62 +120,53 @@ namespace PhotonLib
         {
             requestQueue = new BlockingCollection<RequestPackage>();
 
-            serviceCancelToken = new CancellationTokenSource();
+            serviceCancel = new CancellationTokenSource();
             serviceTask = Task.Factory.StartNew(() => 
             {
                 try
                 {
-                    while (!serviceCancelToken.IsCancellationRequested)
+                    while (!serviceCancel.IsCancellationRequested)
                     {
                         peer.Service();
                     }
                 }
-                catch (OperationCanceledException)
-                { }
-                catch (ObjectDisposedException)
-                { }
-                catch(NullReferenceException)
-                { }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
 
-            }, serviceCancelToken.Token);
+            }, serviceCancel.Token);
 
-            requestCancelToken = new CancellationTokenSource();
+            requestCancel = new CancellationTokenSource();
             requestTask = Task.Factory.StartNew(() =>
             {
                 try
                 {
-                    while (!requestCancelToken.IsCancellationRequested)
+                    while (!requestCancel.IsCancellationRequested)
                     {
-                        if (requestAwaitor.WaitOne())
+                        currentRequest?.Awaitor.WaitOne();
+                        if (requestQueue.TryTake(out currentRequest, 3000, requestCancel.Token))
                         {
-                            if (requestQueue.TryTake(out currentRequest, Timeout.Infinite, requestCancelToken.Token))
-                            {
-                                requestAwaitor.Reset();
-                                peer.OpCustom(currentRequest.Request, true, 0, false);
-                            }
+                            peer.OpCustom(currentRequest.Request, true, 0, false);
                         }
                     }
                 }
-                catch (OperationCanceledException)
+                catch (Exception e)
                 {
+                    Console.WriteLine(e.Message);
                 }
-                catch (ObjectDisposedException)
-                {
-                }
-                catch (ArgumentNullException)
-                { }
             });
         }
 
         private void StopService()
         {
-            serviceCancelToken.Cancel();
-            serviceCancelToken.Dispose();
-            serviceCancelToken = null;
+            serviceCancel.Cancel();
+            serviceCancel.Dispose();
+            serviceCancel = null;
 
-            requestCancelToken.Cancel();
-            requestCancelToken.Dispose();
-            requestCancelToken = null;
+            requestCancel.Cancel();
+            requestCancel.Dispose();
+            requestCancel = null;
 
             while (requestQueue.Any())
             {
@@ -215,8 +203,8 @@ namespace PhotonLib
                 if (disposing)
                 {
                     // TODO: 處置 Managed 狀態 (Managed 物件)。
-                    serviceCancelToken?.Dispose();
-                    requestCancelToken?.Dispose();
+                    serviceCancel?.Dispose();
+                    requestCancel?.Dispose();
 
                     while (requestQueue.Any())
                     {
