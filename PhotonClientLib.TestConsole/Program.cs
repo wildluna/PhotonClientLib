@@ -1,6 +1,4 @@
-﻿using PhotonGlobalLib.Operation;
-using System;
-using System.Threading;
+﻿using System;
 using System.Threading.Tasks;
 using TestClientLib;
 
@@ -29,15 +27,15 @@ namespace PhotonLib.TestConsole
 
                 for (int i = 0; i < taskCount; i++)
                 {
-                    int maxDelay = (i % 2) == 0?0:0;
+                    int maxDelay = (i%2) == 0?0:500;
                     works[i] = await Task.Factory.StartNew(async (Id) =>
                     {
                         for (int j = 0; j < msgCount; j++)
                         {
                             int delay = rnd.Next(0, maxDelay);
-                            string message = string.Format("Thread: {0}, Times: {1} Delay: {2}", Id, j, delay);
+                            string message = string.Format("Thread: {0,-5}, Times: {1,-5} Delay: {2,-5}", Id, j, delay);
                             var response = await PhotonUtil.Instance.RequestDelayAsync(delay, message);
-                            Console.WriteLine("Send Message {0}, Response: {1}", message, response.Message);
+                            Console.WriteLine("Send    : {0}\r\nResponse: {0}", message, response.Message);
                         }
                         Console.WriteLine("Thread{0} Done.", Id);
                     }, i);
